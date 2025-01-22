@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.6)
 
 project(net
-  DESCRIPTION "C and C++ network libraries")
+  DESCRIPTION "C++ network libraries"
+  LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
@@ -72,15 +73,15 @@ endif()
 # target_link_libraries(flat_hash_map_bm benchmark::benchmark flat_hash_map)
 # ```
 
-add_library(logging STATIC src/logging.c include/logging.h)
+add_library(logging STATIC src/logging.cpp include/logging.hpp)
 target_include_directories(logging PUBLIC include PRIVATE src)
 
-add_library(buffer STATIC src/buffer.c include/buffer.h)
+add_library(buffer STATIC src/buffer.cpp include/buffer.hpp)
 target_include_directories(buffer PUBLIC include PRIVATE src)
 # TODO: buffer unit tests
 
-add_executable(tcp_server examples/tcp_server.c)
+add_executable(tcp_server examples/tcp_server.cpp)
 target_link_libraries(tcp_server logging buffer)
 
-add_executable(tcp_client examples/tcp_client.c)
+add_executable(tcp_client examples/tcp_client.cpp)
 target_link_libraries(tcp_client logging buffer)
