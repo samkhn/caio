@@ -72,5 +72,15 @@ endif()
 # target_link_libraries(flat_hash_map_bm benchmark::benchmark flat_hash_map)
 # ```
 
+add_library(logging STATIC src/logging.c include/logging.h)
+target_include_directories(logging PUBLIC include PRIVATE src)
+
+add_library(buffer STATIC src/buffer.c include/buffer.h)
+target_include_directories(buffer PUBLIC include PRIVATE src)
+# TODO: buffer unit tests
+
 add_executable(tcp_server examples/tcp_server.c)
+target_link_libraries(tcp_server logging buffer)
+
 add_executable(tcp_client examples/tcp_client.c)
+target_link_libraries(tcp_client logging buffer)
