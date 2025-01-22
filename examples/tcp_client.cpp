@@ -11,7 +11,11 @@
 #include <string.h>
 #include <sys/socket.h>
 
-static constexpr size_t kMaxMessageSize = 4096;
+static constexpr std::size_t kMaxHeaderSize = 4;
+static constexpr std::size_t kMaxMessageSize = 4096;
+
+static constexpr std::size_t kWriteBufferSize = kMaxHeaderSize + kMaxMessageSize;
+static constexpr std::size_t kReadBufferSize = kMaxHeaderSize + kMaxMessageSize + 1;
 
 int32_t query(int fd, std::string_view message) {
   uint32_t length = message.length();
@@ -20,36 +24,36 @@ int32_t query(int fd, std::string_view message) {
   }
 
   // send request
-  char write_buffer[4 + kMaxMessageSize];
-  memcpy(write_buffer, &length, 4);
-  memcpy(&write_buffer[4], message.data(), length);
-  int32_t err = write_all(fd, write_buffer, 4 + length);
+  char write_buffer[kWriteBufferSize];
+  memcpy(write_buffer, &length, kMaxHeaderSize);
+  memcpy(&write_buffer[kMaxHeaderSize], message.data(), length);
+  int32_t err = write_all(fd, write_buffer, kMaxHeaderSize + length);
   if (err) {
     return err;
   }
 
   // read header/length
-  char read_buffer[4 + kMaxMessageSize + 1];
+  char read_buffer[kReadBufferSize];
   errno = 0;
-  err = read_full(fd, read_buffer, 4);
+  err = read_full(fd, read_buffer, kMaxHeaderSize);
   if (err) {
     log_info(errno == 0 ? "EOF" : "error in reading length");
     return err;
   }
-  memcpy(&length, read_buffer, 4);
+  memcpy(&length, read_buffer, kMaxHeaderSize);
   if (length > kMaxMessageSize) {
     log_info("message too long");
     return -1;
   }
 
   // read message
-  err = read_full(fd, &read_buffer[4], length);
+  err = read_full(fd, &read_buffer[kMaxHeaderSize], length);
   if (err) {
     log_info("error in reading message");
     return err;
   }
 
-  std::string_view got{&read_buffer[4], length};
+  std::string_view got{&read_buffer[kMaxHeaderSize], length};
   std::cout << "server says: " << got << '\n';
   return 0;
 }

@@ -13,37 +13,39 @@
 #include "buffer.hpp"
 #include "logging.hpp"
 
-static constexpr size_t kMaxMessageSize = 4096;
+static constexpr std::size_t kMaxHeaderSize = 4;
+static constexpr std::size_t kMaxMessageSize = 4096;
 static constexpr std::string_view reply = "world";
 
+static constexpr std::size_t kReadBufferSize = kMaxMessageSize + kMaxMessageSize;
+
 static int32_t respond(int connfd) {
-  char read_buffer[4 + kMaxMessageSize];  // message is length (4 chars), then
-                                          // content (4096 chars)
+  char read_buffer[kReadBufferSize];
   errno = 0;                              // reset
-  int32_t err = read_full(connfd, read_buffer, 4);
+  int32_t err = read_full(connfd, read_buffer, kMaxHeaderSize);
   if (err) {
     log_info(errno == 0 ? "EOF" : "error in reading length of message");
     return err;
   }
   uint32_t length = 0;
-  memcpy(&length, read_buffer, 4);  // assumes little endian
+  memcpy(&length, read_buffer, kMaxHeaderSize);  // assumes little endian
   if (length > kMaxMessageSize) {
     log_info("length of message too long");
     return -1;
   }
-  err = read_full(connfd, &read_buffer[4], length);
+  err = read_full(connfd, &read_buffer[kMaxHeaderSize], length);
   if (err) {
     log_info("error in reading message");
     return err;
   }
-  std::string_view got{&read_buffer[4], length};
+  std::string_view got{&read_buffer[kMaxHeaderSize], length};
   std::cout << "client says: " << got << '\n';
 
-  char write_buffer[4 + reply.size()];
+  char write_buffer[kMaxHeaderSize + reply.size()];
   length = reply.size();
-  memcpy(write_buffer, &length, 4);
-  memcpy(&write_buffer[4], reply.data(), length);
-  return write_all(connfd, write_buffer, 4 + length);
+  memcpy(write_buffer, &length, kMaxHeaderSize);
+  memcpy(&write_buffer[kMaxHeaderSize], reply.data(), length);
+  return write_all(connfd, write_buffer, kMaxHeaderSize + length);
 }
 
 int main() {
