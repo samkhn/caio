@@ -1,6 +1,8 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +10,9 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <memory>
 #include <string_view>
+#include <vector>
 
 #include "buffer.hpp"
 #include "logging.hpp"
@@ -17,35 +21,106 @@ static constexpr std::size_t kMaxHeaderSize = 4;
 static constexpr std::size_t kMaxMessageSize = 4096;
 static constexpr std::string_view reply = "world";
 
-static constexpr std::size_t kReadBufferSize = kMaxMessageSize + kMaxMessageSize;
+static constexpr std::size_t kReadBufferSize =
+    kMaxMessageSize + kMaxMessageSize;
 
-static int32_t respond(int connfd) {
-  char read_buffer[kReadBufferSize];
-  errno = 0;                              // reset
-  int32_t err = read_full(connfd, read_buffer, kMaxHeaderSize);
-  if (err) {
-    log_info(errno == 0 ? "EOF" : "error in reading length of message");
-    return err;
+enum class ConnectionStatus {
+  OFF,  // only during initialization
+  READ,
+  WRITE,
+  CLOSE  // sets up connection to be destroyed
+};
+
+struct Connection {
+  int fd = -1;
+  ConnectionStatus status = ConnectionStatus::OFF;
+  std::vector<uint8_t> incoming;
+  std::vector<uint8_t> outgoing;
+};
+
+void fd_set_nonblocking(int fd) {
+  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+}
+
+void BufferAppend(std::vector<uint8_t> &buffer, const uint8_t *data,
+                  size_t length) {
+  buffer.insert(buffer.end(), data, data + length);
+}
+
+void BufferConsume(std::vector<uint8_t> &buffer, size_t n) {
+  buffer.erase(buffer.begin(), buffer.begin() + n);
+}
+
+std::unique_ptr<Connection> HandleAccept(int fd) {
+  sockaddr_in client_addr = {};
+  socklen_t socklen = sizeof(client_addr);
+  int connection_fd =
+      accept(fd, reinterpret_cast<sockaddr *>(&client_addr), &socklen);
+  if (connection_fd < 0) {
+    return nullptr;
+  }
+  fd_set_nonblocking(connection_fd);
+  std::unique_ptr<Connection> connection = std::make_unique<Connection>();
+  connection->fd = connection_fd;
+  connection->status =
+      ConnectionStatus::READ;  // we want to read the 1st request
+  return connection;
+}
+
+std::unique_ptr<Connection> TryOneRequest(
+    std::unique_ptr<Connection> connection) {
+  if (connection->incoming.size() < kMaxHeaderSize) {
+    return connection;  // we want to continue reading
   }
   uint32_t length = 0;
-  memcpy(&length, read_buffer, kMaxHeaderSize);  // assumes little endian
+  memcpy(&length, connection->incoming.data(), kMaxHeaderSize);
   if (length > kMaxMessageSize) {
-    log_info("length of message too long");
-    return -1;
+    // protocol error, message size exceeds limit
+    connection->status = ConnectionStatus::CLOSE;
+    return connection;
   }
-  err = read_full(connfd, &read_buffer[kMaxHeaderSize], length);
-  if (err) {
-    log_info("error in reading message");
-    return err;
-  }
-  std::string_view got{&read_buffer[kMaxHeaderSize], length};
-  std::cout << "client says: " << got << '\n';
+  const uint8_t *request = &connection->incoming[4];
+  BufferAppend(connection->outgoing, (const uint8_t *)&length, kMaxHeaderSize);
+  BufferAppend(connection->outgoing, request, length);
+  BufferConsume(connection->incoming, kMaxHeaderSize + length);
+  return connection;
+}
 
-  char write_buffer[kMaxHeaderSize + reply.size()];
-  length = reply.size();
-  memcpy(write_buffer, &length, kMaxHeaderSize);
-  memcpy(&write_buffer[kMaxHeaderSize], reply.data(), length);
-  return write_all(connfd, write_buffer, kMaxHeaderSize + length);
+std::unique_ptr<Connection> HandleRead(std::unique_ptr<Connection> connection) {
+  uint8_t buffer[64 * 1024];
+  ssize_t rv = read(connection->fd, buffer, sizeof(buffer));
+  if (rv <= 0) {
+    connection->status = ConnectionStatus::CLOSE;
+    return connection;
+  }
+  BufferAppend(connection->incoming, buffer, (size_t)rv);
+  std::unique_ptr<Connection> read_request =
+      TryOneRequest(std::move(connection));
+  if (read_request->outgoing.size() > 0) {
+    // has a response
+    read_request->status = ConnectionStatus::WRITE;
+  } else {
+    read_request->status = ConnectionStatus::READ;
+  }
+  return read_request;
+}
+
+std::unique_ptr<Connection> HandleWrite(
+    std::unique_ptr<Connection> connection) {
+  assert(connection->outgoing.size() > 0);
+  ssize_t rv = write(connection->fd, connection->outgoing.data(),
+                     connection->outgoing.size());
+  if (rv < 0) {
+    connection->status = ConnectionStatus::CLOSE;
+    return connection;
+  }
+  BufferConsume(connection->outgoing, (size_t)rv);
+  if (connection->outgoing.size() == 0) {
+    connection->status = ConnectionStatus::READ;
+  } else {
+    connection->status = ConnectionStatus::WRITE;
+  }
+  return connection;
 }
 
 int main() {
@@ -71,24 +146,63 @@ int main() {
     log_fatal("failed to listen");
   }
 
-  // TODO: event loop
+  std::vector<std::unique_ptr<Connection>> fd_to_connection;
+  std::vector<pollfd> poll_args;
   while (1) {
-    sockaddr_in client_addr = {};
-    socklen_t socklength = sizeof(client_addr);
-    int connfd =
-        accept(fd, reinterpret_cast<sockaddr *>(&client_addr), &socklength);
-    if (connfd < 0) {
-      continue;
+    poll_args.clear();
+    pollfd pfd_in = {fd, POLLIN, 0};
+    poll_args.push_back(pfd_in);
+    for (auto &connection : fd_to_connection) {
+      if (!connection) {
+        continue;
+      }
+      pollfd pfd = {connection->fd, POLLERR, 0};
+      if (connection->status == ConnectionStatus::READ) {
+        pfd.events |= POLLIN;
+      }
+      if (connection->status == ConnectionStatus::WRITE) {
+        pfd.events |= POLLOUT;
+      }
+      poll_args.push_back(pfd);
     }
-
-    while (1) {
-      int32_t err = respond(connfd);
-      if (err) {
-        break;
+    int poll_result =
+        poll(poll_args.data(), (nfds_t)poll_args.size(), -1);  // blocking
+    if (poll_result < 0 && errno == EINTR) {
+      continue;  // interrupted, not an error
+    }
+    if (poll_result < 0) {
+      log_fatal("poll");
+    }
+    if (poll_args[0].revents) {
+      if (std::unique_ptr<Connection> connection = HandleAccept(fd)) {
+        if (fd_to_connection.size() <= (size_t)connection->fd) {
+          fd_to_connection.resize(connection->fd + 1);
+        }
+        assert(!fd_to_connection[connection->fd]);
+        fd_to_connection[connection->fd] = std::move(connection);
       }
     }
-    close(connfd);
+    for (size_t i = 1; i < poll_args.size(); i++) {
+      uint32_t ready = poll_args[i].revents;
+      if (ready == 0) {
+        continue;
+      }
+      std::unique_ptr<Connection> connection =
+          std::move(fd_to_connection[poll_args[i].fd]);
+      int fd_index = connection->fd;
+      if (ready & POLLIN) {
+        fd_to_connection[fd_index] =
+            std::move(HandleRead(std::move(connection)));
+      } else if (ready & POLLOUT) {
+        fd_to_connection[fd_index] =
+            std::move(HandleWrite(std::move(connection)));
+      } else if ((ready & POLLERR) ||
+                 connection->status == ConnectionStatus::CLOSE) {
+        close(fd_index);
+        // explicitly don't place it back into the fd_to_connection vector
+        // it'll destroy when this scope closes
+      }
+    }
   }
-
   return 0;
 }
