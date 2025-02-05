@@ -16,7 +16,7 @@ find_program(CLANG_TIDY_PATH NAMES clang-tidy)
 if(NOT CLANG_TIDY_PATH)
   message(FATAL_ERROR "Could not find the program clang-tidy")
 endif()
-# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy-18")
 
 # TODO
 # add_compile_options(-fsanitize=address,thread,memory,undefined)

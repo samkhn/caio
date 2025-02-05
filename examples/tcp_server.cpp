@@ -19,7 +19,6 @@
 
 static constexpr std::size_t kMaxHeaderSize = 4;
 static constexpr std::size_t kMaxMessageSize = 4096;
-static constexpr std::string_view reply = "world";
 
 static constexpr std::size_t kReadBufferSize =
     kMaxMessageSize + kMaxMessageSize;
@@ -61,9 +60,12 @@ std::unique_ptr<Connection> HandleAccept(int fd) {
   }
   fd_set_nonblocking(connection_fd);
   std::unique_ptr<Connection> connection = std::make_unique<Connection>();
+  uint32_t ip = client_addr.sin_addr.s_addr;
+  fprintf(stderr, "new client from %u.%u.%u.%u:%u\n", ip & 255, (ip >> 8) & 255,
+          (ip >> 16) & 255, ip >> 24, ntohs(client_addr.sin_port));
   connection->fd = connection_fd;
-  connection->status =
-      ConnectionStatus::READ;  // we want to read the 1st request
+  // when we accept a request, we want to read it first
+  connection->status = ConnectionStatus::READ;
   return connection;
 }
 
