@@ -1,14 +1,18 @@
 #ifndef _NET_LOGGING_H_
 #define _NET_LOGGING_H_
 
-#include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 
+namespace Net {
+namespace Logging {
+
 // prints to stderr
-void log_info(const char *msg);
+void LogInfo(const char* msg);
 
 // prints to stderr and aborts
-void log_fatal(const char *msg);
+void LogFatal(const char* msg);
 
-#endif // _NET_LOGGING_H_
+}  // namespace Logging
+}  // namespace Net
+
+#endif  // _NET_LOGGING_H_

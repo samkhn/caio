@@ -1,6 +1,5 @@
 #include <arpa/inet.h>
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -40,19 +39,19 @@ int Query(int fd, std::string_view message) {
   char read_buffer[kReadBufferSize];
   errno = 0;
   if (int32_t err = Net::Buffer::ReadN(fd, read_buffer, kMaxHeaderSize)) {
-    log_info(errno == 0 ? "EOF" : "error in reading length");
+    Net::Logging::LogInfo(errno == 0 ? "EOF" : "error in reading length");
     return err;
   }
   memcpy(&length, read_buffer, kMaxHeaderSize);
   if (length > kMaxMessageSize) {
-    log_info("message too long");
+    Net::Logging::LogInfo("message too long");
     return -1;
   }
 
   // read message
   if (int32_t err =
           Net::Buffer::ReadN(fd, &read_buffer[kMaxHeaderSize], length)) {
-    log_info("error in reading message");
+    Net::Logging::LogInfo("error in reading message");
     return err;
   }
 
@@ -66,16 +65,16 @@ int Query(int fd, std::string_view message) {
 int main() {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
-    log_fatal("failed to construct socket");
+    Net::Logging::LogFatal("failed to construct socket");
   }
 
   sockaddr_in addr = {};
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = ntohl(INADDR_LOOPBACK);
   addr.sin_port = ntohs(1234);
-  int dial = connect(fd, (const struct sockaddr *)&addr, sizeof(addr));
+  int dial = connect(fd, (const struct sockaddr*)&addr, sizeof(addr));
   if (dial) {
-    log_fatal("failed to connect");
+    Net::Logging::LogFatal("failed to connect");
   }
 
   if (Query(fd, "hello1")) {

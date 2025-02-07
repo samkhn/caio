@@ -9,19 +9,13 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <iostream>
 #include <memory>
-#include <string_view>
 #include <vector>
 
-#include "buffer.hpp"
 #include "logging.hpp"
 
 static constexpr std::size_t kMaxHeaderSize = 4;
 static constexpr std::size_t kMaxMessageSize = 4096;
-
-static constexpr std::size_t kReadBufferSize =
-    kMaxMessageSize + kMaxMessageSize;
 
 enum class ConnectionStatus {
   OFF,  // only during initialization
@@ -37,16 +31,18 @@ struct Connection {
   std::vector<uint8_t> outgoing;
 };
 
+// TODO: return error if we can't set it
 void fd_set_nonblocking(int fd) {
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 }
 
-void BufferAppend(std::vector<uint8_t> &buffer, const uint8_t *data,
+// TODO: move next two methods into being class functions of Connection
+void BufferAppend(std::vector<uint8_t>& buffer, const uint8_t* data,
                   size_t length) {
   buffer.insert(buffer.end(), data, data + length);
 }
 
-void BufferConsume(std::vector<uint8_t> &buffer, size_t n) {
+void BufferConsume(std::vector<uint8_t>& buffer, size_t n) {
   buffer.erase(buffer.begin(), buffer.begin() + n);
 }
 
@@ -54,7 +50,7 @@ std::unique_ptr<Connection> HandleAccept(int fd) {
   sockaddr_in client_addr = {};
   socklen_t socklen = sizeof(client_addr);
   int connection_fd =
-      accept(fd, reinterpret_cast<sockaddr *>(&client_addr), &socklen);
+      accept(fd, reinterpret_cast<sockaddr*>(&client_addr), &socklen);
   if (connection_fd < 0) {
     return nullptr;
   }
@@ -81,8 +77,8 @@ std::unique_ptr<Connection> TryOneRequest(
     connection->status = ConnectionStatus::CLOSE;
     return connection;
   }
-  const uint8_t *request = &connection->incoming[4];
-  BufferAppend(connection->outgoing, (const uint8_t *)&length, kMaxHeaderSize);
+  const uint8_t* request = &connection->incoming[4];
+  BufferAppend(connection->outgoing, (const uint8_t*)&length, kMaxHeaderSize);
   BufferAppend(connection->outgoing, request, length);
   BufferConsume(connection->incoming, kMaxHeaderSize + length);
   return connection;
@@ -128,7 +124,7 @@ std::unique_ptr<Connection> HandleWrite(
 int main() {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
-    log_fatal("failed to construct socket");
+    Net::Logging::LogFatal("failed to construct socket");
   }
 
   int optval = 1;
@@ -138,14 +134,14 @@ int main() {
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = ntohl(0);
   addr.sin_port = ntohs(1234);
-  int rv = bind(fd, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr));
+  int rv = bind(fd, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
   if (rv) {
-    log_fatal("failed to bind");
+    Net::Logging::LogFatal("failed to bind");
   }
 
   rv = listen(fd, SOMAXCONN);
   if (rv) {
-    log_fatal("failed to listen");
+    Net::Logging::LogFatal("failed to listen");
   }
 
   std::vector<std::unique_ptr<Connection>> fd_to_connection;
@@ -154,7 +150,7 @@ int main() {
     poll_args.clear();
     pollfd pfd_in = {fd, POLLIN, 0};
     poll_args.push_back(pfd_in);
-    for (auto &connection : fd_to_connection) {
+    for (auto& connection : fd_to_connection) {
       if (!connection) {
         continue;
       }
@@ -167,13 +163,13 @@ int main() {
       }
       poll_args.push_back(pfd);
     }
-    int poll_result =
-        poll(poll_args.data(), (nfds_t)poll_args.size(), -1);  // blocking
+    int poll_result = poll(poll_args.data(), (nfds_t)poll_args.size(),
+                           -1);  // blocking
     if (poll_result < 0 && errno == EINTR) {
       continue;  // interrupted, not an error
     }
     if (poll_result < 0) {
-      log_fatal("poll");
+      Net::Logging::LogFatal("poll");
     }
     if (poll_args[0].revents) {
       if (std::unique_ptr<Connection> connection = HandleAccept(fd)) {
@@ -201,8 +197,8 @@ int main() {
       } else if ((ready & POLLERR) ||
                  connection->status == ConnectionStatus::CLOSE) {
         close(fd_index);
-        // explicitly don't place it back into the fd_to_connection vector
-        // it'll destroy when this scope closes
+        // explicitly don't place it back into the fd_to_connection
+        // vector it'll destroy when this scope closes
       }
     }
   }
