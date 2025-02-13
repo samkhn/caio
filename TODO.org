@@ -1,0 +1,30 @@
+* Design
+This is a demo distributed key-value store.
+
+Underlying kv store will be an unordered_map<string, string>.
+
+The more interesting things are how we share messages.
+
+Will be a Paxos quorum of n machines (n > 0).
+
+What each machine executes:
+1. reach out to other machines (addresses and ports are stored in a config file, read at startup).
+2. catch up on any missed learning
+when a machine is teaching another, both will be under a lot of pressure (sending logs over the wire).
+if the teacher or student machine receives a request but takes too long, client will retry
+3. prepare/propose message
+
+What a client will do:
+1. start, construct socket. ask closest server what it knows.
+servers should send a list of all the known/reachable machines in the quorum (will be three localhost machines for now)
+client should round robin on them with exponential backoff between failed dials
+2. send reads and writes with cookie
+3. receive and log response
+if cookie is outddated or non-existent, request a cookie. cookie is a hash of the vector clock.
+We can start a lot of clients and make them do varying numbers of reads and writes to load test
+
+* TODO
+** TODO example binary with epoll
+** TODO example binary with iouring
+** TODO example binary reading a file with iouring
+** TODO expand client to spawn N threads, querying server, returning # of successes, for load testing

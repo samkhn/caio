@@ -29,8 +29,11 @@ add_library(buffer STATIC src/buffer.cpp include/buffer.hpp)
 target_include_directories(buffer PUBLIC include PRIVATE src)
 # TODO: buffer unit tests
 
-add_executable(tcp_server examples/tcp_server.cpp)
-target_link_libraries(tcp_server logging buffer)
+add_executable(tcp_server_simple examples/tcp_server_simple.cpp)
+target_link_libraries(tcp_server_simple logging buffer)
+
+add_executable(tcp_server_poll examples/tcp_server_poll.cpp)
+target_link_libraries(tcp_server_poll logging)
 
 add_executable(tcp_client examples/tcp_client.cpp)
 target_link_libraries(tcp_client logging buffer)
