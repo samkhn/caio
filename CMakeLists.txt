@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(net
-  DESCRIPTION "C++ network libraries"
+project(caio
+  DESCRIPTION "C++ library for async I/O ([e]poll, iouring)"
   LANGUAGES CXX)
 
 if (MSVC)
@@ -29,6 +29,7 @@ add_library(buffer STATIC src/buffer.cpp include/buffer.hpp)
 target_include_directories(buffer PUBLIC include PRIVATE src)
 # TODO: buffer unit tests
 
+# Example binaries
 add_executable(tcp_server_simple examples/tcp_server_simple.cpp)
 target_link_libraries(tcp_server_simple logging buffer)
 
@@ -37,3 +38,6 @@ target_link_libraries(tcp_server_poll logging)
 
 add_executable(tcp_client examples/tcp_client.cpp)
 target_link_libraries(tcp_client logging buffer)
+
+add_executable(bcat examples/bcat.cpp)
+add_executable(seek examples/seek.cpp)

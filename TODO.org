@@ -1,10 +1,6 @@
 * Design
 This is a demo distributed key-value store.
 
-Underlying kv store will be an unordered_map<string, string>.
-
-The more interesting things are how we share messages.
-
 Will be a Paxos quorum of n machines (n > 0).
 
 What each machine executes:
@@ -13,6 +9,8 @@ What each machine executes:
 when a machine is teaching another, both will be under a lot of pressure (sending logs over the wire).
 if the teacher or student machine receives a request but takes too long, client will retry
 3. prepare/propose message
+- key-value server http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvsrv.html
+- leader-election/raft with append-only log and compaction http://nil.csail.mit.edu/6.5840/2024/labs/lab-raft.html and http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvraft.html
 
 What a client will do:
 1. start, construct socket. ask closest server what it knows.
@@ -22,9 +20,14 @@ client should round robin on them with exponential backoff between failed dials
 3. receive and log response
 if cookie is outddated or non-existent, request a cookie. cookie is a hash of the vector clock.
 We can start a lot of clients and make them do varying numbers of reads and writes to load test
+- sharded keys http://nil.csail.mit.edu/6.5840/2024/labs/lab-shard.html
 
 * TODO
-** TODO example binary with epoll
-** TODO example binary with iouring
-** TODO example binary reading a file with iouring
-** TODO expand client to spawn N threads, querying server, returning # of successes, for load testing
+** TODO refactor protocol out of client, server, poll examples (sample_protocol.h)
+** TODO example binary with epoll that serves traffic (tcp_server_epoll.cpp)
+** TODO example binary with iouring that serves traffic (tcp_server_iouring.cpp)
+** TODO example binary reading a file with iouring (fast_cat.cpp)
+** TODO expand client to spawn N threads, querying server, returning # of successes, for load testing (tcp_client_load_test.cpp)
+*** TODO ?how can we use k8/docker to simulate independent machines on the network and simulate traffic?
+
+- mapreduce http://nil.csail.mit.edu/6.5840/2024/labs/lab-mr.html
