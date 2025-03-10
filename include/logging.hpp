@@ -6,13 +6,13 @@
 namespace Net {
 namespace Logging {
 
-    // prints to stderr
-    void LogInfo(const char* msg);
+// prints to stderr
+void LogInfo(const char *msg);
 
-    // prints to stderr and aborts
-    void LogFatal(const char* msg);
+// prints to stderr and aborts
+void LogFatal(const char *msg);
 
-} // namespace Logging
-} // namespace Net
+}  // namespace Logging
+}  // namespace Net
 
-#endif // _NET_LOGGING_H_
+#endif  // _NET_LOGGING_H_
