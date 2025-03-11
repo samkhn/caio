@@ -49,3 +49,5 @@ add_custom_target(mwc_loadtest
   DEPENDS mwc
   DEPENDS wc
 )
+
+add_executable(traverse examples/traverse.cpp)

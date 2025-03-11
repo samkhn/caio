@@ -11,7 +11,7 @@ def mwc_loadtest():
         print("Usage: ./mwc_loadtest.py /path/to/mwc /path/to/normal_wc")
         return -1
     with tempfile.NamedTemporaryFile() as fp:
-        fp.write(os.urandom(1000000000))
+        fp.write(os.urandom(4000000000))  # 1 GB
         mwc_but = sys.argv[1]
         baseline_wc_but = sys.argv[2]
         print(f"mwc_loadtest: testing mwc at {mwc_but} against {baseline_wc_but}")
