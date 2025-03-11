@@ -41,3 +41,11 @@ target_link_libraries(tcp_client logging buffer)
 
 add_executable(bcat examples/bcat.cpp)
 add_executable(seek examples/seek.cpp)
+
+add_executable(wc examples/wc.cpp)
+add_executable(mwc examples/mwc.cpp)
+add_custom_target(mwc_loadtest
+  python3 ${CMAKE_SOURCE_DIR}/examples/mwc_loadtest.py $<TARGET_FILE:mwc> $<TARGET_FILE:wc>
+  DEPENDS mwc
+  DEPENDS wc
+)

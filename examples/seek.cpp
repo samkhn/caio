@@ -1,7 +1,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <array>
 #include <iostream>
 #include <string_view>
 
