@@ -18,30 +18,32 @@ Arguments:
 
 static constexpr ssize_t kDefaultBufferSize = 4096;
 
-int main(int argc, char **argv) {
-  int fd;
-  bool is_file = false;
-  if (argc > 2) {
-    std::cerr << kHelp << '\n';
-    return -1;
-  } else if (argc == 2) {
-    fd = open(argv[1], O_RDONLY);
-    if (fd < 0) {
-      std::cerr << "Could not open file " << argv[1] << '\n';
-      return -1;
+int main(int argc, char** argv)
+{
+    int fd;
+    bool is_file = false;
+    if (argc > 2) {
+        std::cerr << kHelp << '\n';
+        return -1;
+    } else if (argc == 2) {
+        fd = open(argv[1], O_RDONLY);
+        if (fd < 0) {
+            std::cerr << "Could not open file " << argv[1] << '\n';
+            return -1;
+        }
+        is_file = true;
+    } else {
+        fd = 0; // stdin
     }
-    is_file = true;
-  } else {
-    fd = 0;  // stdin
-  }
-  std::array<char, kDefaultBufferSize> buffer;
-  ssize_t bytes_read, bytes_written;
-  do {
-    bytes_read = read(fd, buffer.data(), buffer.max_size());
-    if (bytes_read > 0) {
-      bytes_written = write(1, buffer.data(), bytes_read);
-    }
-  } while (bytes_read > 0 && bytes_written == bytes_read);
-  if (is_file) close(fd);
-  return 0;
+    std::array<char, kDefaultBufferSize> buffer;
+    ssize_t bytes_read, bytes_written;
+    do {
+        bytes_read = read(fd, buffer.data(), buffer.max_size());
+        if (bytes_read > 0) {
+            bytes_written = write(1, buffer.data(), bytes_read);
+        }
+    } while (bytes_read > 0 && bytes_written == bytes_read);
+    if (is_file)
+        close(fd);
+    return 0;
 }

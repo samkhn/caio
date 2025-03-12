@@ -12,11 +12,27 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# NOTE: anything that depends on liburing needs threads
+find_package(Threads REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+find_library(IOURING_LIB liburing.so
+    PATHS /usr/lib /usr/local/lib)
+
+find_path(IOURING_HEADER liburing.h
+    PATHS /usr/include /usr/local/include)
+
+if(NOT IOURING_LIB OR NOT IOURING_HEADER)
+    message(FATAL_ERROR "Cannot find liburing in system headers. Specify -DIOURING_HEADER and -DIOURING_LIB to point to header and library respectively")
+else()
+    message("iouring header at ${IOURING_HEADER} library at ${IOURING_LIB}")
+endif()
+
 find_program(CLANG_TIDY_PATH NAMES clang-tidy)
 if(NOT CLANG_TIDY_PATH)
   message(FATAL_ERROR "Could not find the program clang-tidy")
 endif()
-set(CMAKE_CXX_CLANG_TIDY "clang-tidy-18")
+set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PATH};-checks=-*,modernize-*")
 
 # TODO
 # add_compile_options(-fsanitize=address,thread,memory,undefined)
@@ -51,3 +67,7 @@ add_custom_target(mwc_loadtest
 )
 
 add_executable(traverse examples/traverse.cpp)
+
+add_executable(ioucp examples/ioucp.cpp)
+target_link_libraries(ioucp ${IOURING_LIB})
+target_include_directories(ioucp PUBLIC ${IOURING_HEADER} Threads::Threads)
