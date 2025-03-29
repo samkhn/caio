@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.6)
 
 project(caio
   DESCRIPTION "C++ library for async I/O ([e]poll, iouring)"
-  LANGUAGES CXX)
+  LANGUAGES CXX
+)
 
 if (MSVC)
   add_compile_options(/W4 /w14640)
@@ -17,22 +18,24 @@ find_package(Threads REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_library(IOURING_LIB liburing.so
-    PATHS /usr/lib /usr/local/lib)
+  PATHS /usr/lib /usr/local/lib)
 
 find_path(IOURING_HEADER liburing.h
-    PATHS /usr/include /usr/local/include)
+  PATHS /usr/include /usr/local/include)
 
 if(NOT IOURING_LIB OR NOT IOURING_HEADER)
-    message(FATAL_ERROR "Cannot find liburing in system headers. Specify -DIOURING_HEADER and -DIOURING_LIB to point to header and library respectively")
+  message(FATAL_ERROR "Cannot find liburing in system headers. Specify -DIOURING_HEADER and -DIOURING_LIB to point to header and library respectively")
 else()
-    message("iouring header at ${IOURING_HEADER} library at ${IOURING_LIB}")
+  message("iouring header at ${IOURING_HEADER} library at ${IOURING_LIB}")
 endif()
 
-find_program(CLANG_TIDY_PATH NAMES clang-tidy)
-if(NOT CLANG_TIDY_PATH)
+find_program(CLANG_TIDY_BIN NAMES clang-tidy)
+if(NOT CLANG_TIDY_BINARY)
   message(FATAL_ERROR "Could not find the program clang-tidy")
+else()
+  message("clang tidy found at ${CLANG_TIDY_BINARY}")
 endif()
-set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PATH};-checks=-*,modernize-*")
+set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_BINARY}")
 
 # TODO
 # add_compile_options(-fsanitize=address,thread,memory,undefined)

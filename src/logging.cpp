@@ -2,9 +2,9 @@
 
 #include "logging.hpp"
 
-void Net::Logging::LogInfo(const char* msg) { std::cerr << msg << '\n'; }
+void Caio::Logging::LogInfo(const char* msg) { std::cerr << msg << '\n'; }
 
-void Net::Logging::LogFatal(const char* msg)
+void Caio::Logging::LogFatal(const char* msg)
 {
     int err = errno;
     std::cerr << "[errno: " << err << "]: " << msg << '\n';

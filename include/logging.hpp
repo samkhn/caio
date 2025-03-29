@@ -1,18 +1,16 @@
-#ifndef _NET_LOGGING_H_
-#define _NET_LOGGING_H_
+#ifndef _CAIO_LOGGING_H_
+#define _CAIO_LOGGING_H_
 
 #include <stdlib.h>
 
-namespace Net {
-namespace Logging {
+namespace Caio::Logging {
 
-    // prints to stderr
-    void LogInfo(const char* msg);
+// prints to stderr
+void LogInfo(const char* msg);
 
-    // prints to stderr and aborts
-    void LogFatal(const char* msg);
+// prints to stderr and aborts
+void LogFatal(const char* msg);
 
-} // namespace Logging
-} // namespace Net
+} // namespace Caio::Logging
 
-#endif // _NET_LOGGING_H_
+#endif // _CAIO_LOGGING_H_

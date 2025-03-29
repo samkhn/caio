@@ -1,12 +1,14 @@
 #include <arpa/inet.h>
-#include <assert.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <array>
+#include <cassert>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 #include "buffer.hpp"
@@ -18,18 +20,18 @@ static constexpr std::string_view reply = "world";
 
 static constexpr std::size_t kReadBufferSize = kMaxMessageSize + kMaxMessageSize;
 
-int32_t Respond(int connfd)
+auto Respond(int connfd) -> int32_t
 {
-    char read_buffer[kReadBufferSize];
+    std::array<char, kReadBufferSize> read_buffer;
     errno = 0; // reset
-    int32_t err = Net::Buffer::ReadN(connfd, read_buffer, kMaxHeaderSize);
+    int32_t err = Net::Buffer::ReadN(connfd, read_buffer.data(), kMaxHeaderSize);
     if (err) {
         Net::Logging::LogInfo(errno == 0 ? "EOF"
                                          : "error in reading length of message");
         return err;
     }
     uint32_t length = 0;
-    memcpy(&length, read_buffer, kMaxHeaderSize); // assumes little endian
+    memcpy(&length, read_buffer.data(), kMaxHeaderSize); // assumes little endian
     if (length > kMaxMessageSize) {
         Net::Logging::LogInfo("length of message too long");
         return -1;
@@ -42,14 +44,16 @@ int32_t Respond(int connfd)
     std::string_view got { &read_buffer[kMaxHeaderSize], length };
     std::cout << "client says: " << got << '\n';
 
-    char write_buffer[kMaxHeaderSize + reply.size()];
+    std::string write_buffer;
+    write_buffer.reserve(kMaxHeaderSize + reply.size());
     length = reply.size();
-    memcpy(write_buffer, &length, kMaxHeaderSize);
+    memcpy(write_buffer.data(), &length, kMaxHeaderSize);
     memcpy(&write_buffer[kMaxHeaderSize], reply.data(), length);
-    return Net::Buffer::WriteN(connfd, write_buffer, kMaxHeaderSize + length);
+    return Net::Buffer::WriteN(connfd, write_buffer.c_str(),
+        kMaxHeaderSize + length);
 }
 
-int main()
+auto main() -> int
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {

@@ -1,10 +1,10 @@
 #include <arpa/inet.h>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
 #include <sys/socket.h>
 
 #include <array>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <string_view>
 
@@ -27,7 +27,8 @@ auto Query(int fd, std::string_view message) -> int
     std::array<char, kWriteBufferSize> write_buffer;
     memcpy(write_buffer.data(), &length, kMaxHeaderSize);
     memcpy(&write_buffer[kMaxHeaderSize], message.data(), length);
-    if (int32_t err = Net::Buffer::WriteN(fd, write_buffer.data(), kMaxHeaderSize + length)) {
+    if (int32_t err = Net::Buffer::WriteN(fd, write_buffer.data(),
+            kMaxHeaderSize + length)) {
         return err;
     }
 
@@ -64,7 +65,8 @@ auto main() -> int
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = ntohl(INADDR_LOOPBACK);
     addr.sin_port = ntohs(1234);
-    if (int dial = connect(fd, (const struct sockaddr*)&addr, sizeof(addr));
+    if (int dial = connect(fd, reinterpret_cast<const struct sockaddr*>(&addr),
+            sizeof(addr));
         dial) {
         Net::Logging::LogFatal("failed to connect");
     }

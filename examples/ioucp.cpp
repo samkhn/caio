@@ -1,6 +1,7 @@
-#include "liburing.h"
 #include <iostream>
 #include <string_view>
+
+#include "liburing.h"
 
 static constexpr std::string_view kHelp = R"(
 ioucp - cp using iouring
@@ -8,7 +9,7 @@ ioucp - cp using iouring
 Usage: ioucp src_file dest_file
 
 Args:
-  src and dest_file are required arguments
+  src_file and dest_file are required arguments
 
 )";
 

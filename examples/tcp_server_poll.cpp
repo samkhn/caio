@@ -1,14 +1,14 @@
 #include <arpa/inet.h>
-#include <cassert>
-#include <cerrno>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cassert>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <vector>
 
@@ -68,7 +68,8 @@ auto HandleAccept(int fd) -> std::unique_ptr<Connection>
     return connection;
 }
 
-auto TryOneRequest(std::unique_ptr<Connection> connection) -> std::unique_ptr<Connection>
+auto TryOneRequest(std::unique_ptr<Connection> connection)
+    -> std::unique_ptr<Connection>
 {
     if (connection->incoming.size() < kMaxHeaderSize) {
         return connection; // we want to continue reading

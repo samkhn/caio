@@ -18,7 +18,7 @@ Arguments:
 
 static constexpr ssize_t kDefaultBufferSize = 4096;
 
-int main(int argc, char** argv)
+auto main(int argc, char** argv) -> int
 {
     int fd;
     bool is_file = false;

@@ -20,14 +20,14 @@ Arguments:
 
 )";
 
-size_t FileSize(int fd)
+auto FileSize(int fd) -> size_t
 {
     struct stat file_info;
     fstat(fd, &file_info);
     return file_info.st_size;
 }
 
-int main(int argc, char** argv)
+auto main(int argc, char** argv) -> int
 {
     if (argc < 2) {
         std::cerr << kHelp << '\n';
@@ -39,7 +39,8 @@ int main(int argc, char** argv)
         int fd = open(argv[i], O_RDONLY);
         if (fd != -1) {
             size_t file_size = FileSize(fd);
-            char* map = (char*)mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            char* map = static_cast<char*>(
+                mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0));
             if (map != MAP_FAILED) {
                 bool mid_word = false;
                 char* end = map + file_size;
